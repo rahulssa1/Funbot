@@ -3,7 +3,7 @@ const path = require('path');
 const axios = require('axios');
 const zlib = require('zlib');
 const chalk = require('chalk');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { OpenruuterAi} = require('@openrouter.ai');
 
 const customChalk = new chalk.Instance({ level: 3 });
 const green = customChalk.green;
@@ -13,7 +13,7 @@ const cyan = customChalk.cyan.bold;
 const bold = customChalk.bold;
 const gray = customChalk.gray;
 
-const GOOGLE_API_KEY = 'AIzaSyCuHlnWbLsefNmnm9OgrZHkFhSpS4w2bFc';
+const OPENRUUTER_API_KEY = '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';
 const POLL_INTERVAL_S = 95;
 const AI_MAX_RETRIES = 7;
 const AI_RETRY_DELAY_S = 5;
@@ -29,7 +29,7 @@ if (GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
     console.error(red(bold('ERROR: Please paste your Google API key into the GOOGLE_API_KEY variable.')));
     process.exit(1);
 }
-const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+const genAI = new OPENRUUTER AI(GOOGLE_API_KEY);
 const api = axios.create({
     headers: {
         'Accept': 'application/json, text/plain, */*',
@@ -98,12 +98,12 @@ const aiPrompt = (question, options) => {
 
 const askAiForAnswer = async (question, options) => {
     const prompt = aiPrompt(question, options);
-    console.log(yellow('\n--- 🤔 Asking Google AI (Once) ---'));
+    console.log(yellow('\n--- 🤔 DEEPSHEK (Once) ---'));
     
     for (let attempt = 1; attempt <= AI_MAX_RETRIES; attempt++) {
         try {
             console.log(yellow(`AI request attempt ${attempt}/${AI_MAX_RETRIES}...`));
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+            const model = genAI.getGenerativeModel({ model: 'openai/gpt-3.5-turbo' });
             const result = await model.generateContent(prompt);
             const response = result.response;
             const aiOutput = response.text().trim();
