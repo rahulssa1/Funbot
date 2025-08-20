@@ -13,7 +13,7 @@ const cyan = customChalk.cyan.bold;
 const bold = customChalk.bold;
 const gray = customChalk.gray;
 
-const GOOGLE_API_KEY = 'AIzaSyCC3PExqQ7miV_NgfBuOgY3RGHrWubVgDU';
+const GOOGLE_API_KEY = 'AIzaSyCuHlnWbLsefNmnm9OgrZHkFhSpS4w2bFc';
 const POLL_INTERVAL_S = 95;
 const AI_MAX_RETRIES = 7;
 const AI_RETRY_DELAY_S = 5;
