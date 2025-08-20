@@ -3,7 +3,7 @@ const path = require('path');
 const axios = require('axios');
 const zlib = require('zlib');
 const chalk = require('chalk');
-const { OpenruuterAi} = require('@openrouter.ai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const customChalk = new chalk.Instance({ level: 3 });
 const green = customChalk.green;
@@ -13,7 +13,7 @@ const cyan = customChalk.cyan.bold;
 const bold = customChalk.bold;
 const gray = customChalk.gray;
 
-const OPENRUUTER_API_KEY = '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';
+const GOOGLE_API_KEY = 'AIzaSyCmbQzKUckOERtiEHwrM_Dm2VbYtP2ymLw';
 const POLL_INTERVAL_S = 95;
 const AI_MAX_RETRIES = 7;
 const AI_RETRY_DELAY_S = 5;
@@ -29,7 +29,7 @@ if (GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
     console.error(red(bold('ERROR: Please paste your Google API key into the GOOGLE_API_KEY variable.')));
     process.exit(1);
 }
-const genAI = new OPENRUUTER AI(GOOGLE_API_KEY);
+const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 const api = axios.create({
     headers: {
         'Accept': 'application/json, text/plain, */*',
@@ -98,12 +98,12 @@ const aiPrompt = (question, options) => {
 
 const askAiForAnswer = async (question, options) => {
     const prompt = aiPrompt(question, options);
-    console.log(yellow('\n--- 🤔 DEEPSHEK (Once) ---'));
+    console.log(yellow('\n--- 🤔 Asking Google AI (Once) ---'));
     
     for (let attempt = 1; attempt <= AI_MAX_RETRIES; attempt++) {
         try {
             console.log(yellow(`AI request attempt ${attempt}/${AI_MAX_RETRIES}...`));
-            const model = genAI.getGenerativeModel({ model: 'openai/gpt-3.5-turbo' });
+            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
             const result = await model.generateContent(prompt);
             const response = result.response;
             const aiOutput = response.text().trim();
@@ -132,6 +132,86 @@ const askAiForAnswer = async (question, options) => {
     return null;
 };
 
+const submitAnswer = async (submitOrder) => {
+    const { lobbyId, quizId, answerIndex } = submitOrder;
+    try {
+        const url = `https://ft.games/api/quiz/${lobbyId}/`;
+        const payload = { quiz_id: quizId, sel_idx: answerIndex };
+        const response = await api.post(url, payload, { 
+            timeout: POST_TIMEOUT_S,
+            headers: { 'Referer': `https://ft.games/${lobbyId}/quiz/` }
+        });
+        const isOk = JSON.stringify(response.data).toLowerCase().includes('ok');
+        console.log(green(`✔ Submitted to lobby. Success: ${isOk}`));
+    } catch (error) {
+        console.error(red(`✖ Submission failed for lobby: ${error.message}`));
+    }
+};
+
+const main = async () => {
+    printBanner();
+
+    let lobbyIds;
+    try {
+        const dataPath = path.join(__dirname, 'data.txt');
+        lobbyIds = fs.readFileSync(dataPath, 'utf8').split('\n').map(id => id.trim()).filter(Boolean);
+        if (lobbyIds.length === 0) throw new Error('data.txt is empty.');
+        console.log(green(`🚀 Checking ${lobbyIds.length} Account by MRPTech Bot.`));
+    } catch (error) {
+        console.error(red(bold(`ERROR: Could not read 'data.txt'. Details: ${error.message}`)));
+        process.exit(1);
+    }
+    
+    while (true) {
+        const timestamp = new Date().toLocaleTimeString('en-GB', { timeZone: 'UTC' });
+        console.log(`\n${gray(`[${timestamp} UTC] Starting new cycle...`)}`);
+
+        const fetchPromises = lobbyIds.map(id => fetchQuizState(id));
+        const results = await Promise.all(fetchPromises);
+
+        const representativeQuiz = results.find(res => res.state?.active && res.state.quiz && res.state.answered_idx === null);
+
+        if (!representativeQuiz) {
+            console.log(green('No new quizzes found across all lobbies.'));
+            await sleep(POLL_INTERVAL_S * 1000);
+            continue;
+        }
+        
+        const { question, options } = representativeQuiz.state.quiz;
+        console.log(cyan(`New question found: "${question}"`));
+        const solvedAnswerIndex = await askAiForAnswer(question, options);
+
+        if (solvedAnswerIndex !== null) {
+            const lobbiesToSubmit = results
+                .filter(res => res.state?.active && res.state.quiz?.id === representativeQuiz.state.quiz.id && res.state.answered_idx === null)
+                .map(res => ({
+                    lobbyId: res.lobbyId,
+                    quizId: res.state.quiz.id,
+                    answerIndex: solvedAnswerIndex,
+                }));
+
+            if (lobbiesToSubmit.length > 0) {
+                console.log(cyan(`\n--- Submitting answer [${solvedAnswerIndex}] to ${lobbiesToSubmit.length} lobbies in parallel... ---`));
+                const submitPromises = lobbiesToSubmit.map(order => submitAnswer(order));
+                await Promise.all(submitPromises);
+            }
+        } else {
+            console.error(red('AI failed to solve the quiz, cannot submit to any lobby.'));
+        }
+        
+        await sleep(POLL_INTERVAL_S * 1000);
+    }
+};
+
+process.on('SIGINT', () => {
+    console.log(yellow('\n\n👋 Closing bot. Goodbye from MRPtech'));
+    process.exit(0);
+});
+
+main().catch(err => {
+    console.error(red('\nAn unexpected error occurred:'), err);
+    process.exit(1);
+});
 const submitAnswer = async (submitOrder) => {
     const { lobbyId, quizId, answerIndex } = submitOrder;
     try {
