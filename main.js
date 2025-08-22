@@ -12,7 +12,7 @@ const cyan = customChalk.cyan.bold;
 const bold = customChalk.bold;
 const gray = customChalk.gray;
 
-const OPENROUTER_API_KEY = ''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'';
+const OPENROUTER_API_KEY = "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";
 const POLL_INTERVAL_S = 95;
 const AI_MAX_RETRIES = 7;
 const AI_RETRY_DELAY_S = 5;
@@ -111,18 +111,8 @@ const askAiForAnswer = async (question, options) => {
         try {
             console.log(yellow(`AI request attempt ${attempt}/${AI_MAX_RETRIES}...`));
 
-            // Use OpenAI Chat Completions API with gpt-3.5-turbo
-            const completion = await openai.chat.completions.create({
-                model: 'deepseek/deepseek-chat-v3-0324:free',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a quiz-solving AI. Reply with ONLY a single non-negative integer (0-based index of the correct option). No words, symbols, or punctuation.'
-                    },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0
-            });
+     
+            
 
             const aiOutput = (completion.choices?.[0]?.message?.content || '').trim();
 
@@ -138,7 +128,17 @@ const askAiForAnswer = async (question, options) => {
                 for (const [word, value] of Object.entries(NUM_WORDS)) {
                     if (aiOutput.toLowerCase().includes(word) && value < options.length) {
                         return value;
-                    }
+                const completion = await openai.chat.completions.create({
+    model: "deepseek/deepseek-chat:free",
+    messages: [
+        {
+            role: "system",
+            content: "You are a quiz-solving AI. Reply with ONLY a single non-negative integer (0-based index of the correct option). No words, symbols, or punctuation."
+        },
+        { role: "user", content: prompt }
+    ],
+    temperature: 0
+});    }
                 }
             }
         } catch (error) {
