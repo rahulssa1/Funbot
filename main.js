@@ -138,7 +138,7 @@ const askAiForAnswer = async (question, options) => {
         { role: "user", content: prompt }
     ],
     temperature: 0
-});    }
+});
                 }
             }
         } catch (error) {
